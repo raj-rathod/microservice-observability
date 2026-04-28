@@ -1,17 +1,21 @@
 package com.rajesh.microservices.api_gateway.component;
 
 import io.jsonwebtoken.Claims;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @Component
-public class JwtAuthFilter implements GlobalFilter {
+public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -21,7 +25,7 @@ public class JwtAuthFilter implements GlobalFilter {
 
         String path = exchange.getRequest().getURI().getPath();
 
-        // Skip auth endpoints
+        // ✅ Skip authentication for public endpoints
         if (path.startsWith("/auth")) {
             return chain.filter(exchange);
         }
@@ -30,30 +34,50 @@ public class JwtAuthFilter implements GlobalFilter {
                 .getHeaders()
                 .getFirst(HttpHeaders.AUTHORIZATION);
 
+        // ❌ Missing or invalid header
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return onError(exchange, "Missing token", HttpStatus.UNAUTHORIZED);
+            return onError(exchange, "Missing or invalid Authorization header", HttpStatus.UNAUTHORIZED);
         }
 
         String token = authHeader.substring(7);
 
         try {
+            // ✅ Validate token
             Claims claims = jwtUtil.validateToken(token);
 
-            // Pass user info to downstream services
-            exchange.getRequest().mutate()
-                    .header("X-User-Id", String.valueOf(claims.get("userId")))
-                    .header("X-User-Email", claims.getSubject())
+            String userId = String.valueOf(claims.get("userId"));
+            String email = claims.getSubject();
+
+            log.info("Authenticated userId: {}", userId);
+
+            // ✅ MUTATE request properly
+            ServerHttpRequest mutatedRequest = exchange.getRequest()
+                    .mutate()
+                    .header("X-User-Id", userId)
+                    .header("X-User-Email", email)
                     .build();
 
-        } catch (Exception e) {
-            return onError(exchange, "Invalid token", HttpStatus.UNAUTHORIZED);
-        }
+            ServerWebExchange mutatedExchange = exchange.mutate()
+                    .request(mutatedRequest)
+                    .build();
 
-        return chain.filter(exchange);
+            return chain.filter(mutatedExchange);
+
+        } catch (Exception e) {
+            log.error("JWT validation failed: {}", e.getMessage());
+            return onError(exchange, "Invalid or expired token", HttpStatus.UNAUTHORIZED);
+        }
     }
 
-    private Mono<Void> onError(ServerWebExchange exchange, String msg, HttpStatus status) {
+    // ✅ Error handler
+    private Mono<Void> onError(ServerWebExchange exchange, String message, HttpStatus status) {
         exchange.getResponse().setStatusCode(status);
         return exchange.getResponse().setComplete();
+    }
+
+    // ✅ Ensure this runs BEFORE RateLimiter
+    @Override
+    public int getOrder() {
+        return -1;
     }
 }
