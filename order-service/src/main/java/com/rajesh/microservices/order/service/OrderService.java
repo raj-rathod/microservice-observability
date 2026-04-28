@@ -5,6 +5,7 @@ import com.rajesh.microservices.order.dto.OrderResponseDTO;
 import com.rajesh.microservices.order.entity.Order;
 import com.rajesh.microservices.order.mapper.OrderMapper;
 import com.rajesh.microservices.order.repository.OrderRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -65,4 +66,19 @@ public class OrderService {
 
         repo.delete(existing);
     }
+
+    // Current log in user user orders
+    public List<OrderResponseDTO> getMyOrders() {
+
+        String userId = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getName();
+
+        List<Order> orders = repo.findByUserId(Long.valueOf(userId));
+
+        return orders.stream()
+                .map(OrderMapper::toDTO)
+                .toList();
+    }
+
 }

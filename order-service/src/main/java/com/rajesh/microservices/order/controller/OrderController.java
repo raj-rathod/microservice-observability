@@ -3,6 +3,7 @@ package com.rajesh.microservices.order.controller;
 import com.rajesh.microservices.order.dto.OrderRequestDTO;
 import com.rajesh.microservices.order.dto.OrderResponseDTO;
 import com.rajesh.microservices.order.service.OrderService;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,8 +22,8 @@ public class OrderController {
     @PostMapping
     public OrderResponseDTO create(
             @RequestBody OrderRequestDTO dto) {
-        Long userId = 1L;
-        return service.create(dto, userId);
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return service.create(dto, Long.valueOf(userId));
     }
 
     // GET ALL
@@ -51,5 +52,10 @@ public class OrderController {
     public String delete(@PathVariable Long id) {
         service.delete(id);
         return "Order deleted successfully";
+    }
+
+    @GetMapping("/my")
+    public List<OrderResponseDTO> getMyOrders() {
+        return service.getMyOrders();
     }
 }
