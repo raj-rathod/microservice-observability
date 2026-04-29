@@ -2,11 +2,14 @@ package com.rajesh.microservices.order.service;
 
 import com.rajesh.microservices.order.dto.OrderRequestDTO;
 import com.rajesh.microservices.order.dto.OrderResponseDTO;
+import com.rajesh.microservices.order.dto.ProductDTO;
 import com.rajesh.microservices.order.entity.Order;
 import com.rajesh.microservices.order.mapper.OrderMapper;
 import com.rajesh.microservices.order.repository.OrderRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -16,15 +19,28 @@ public class OrderService {
 
     private final OrderRepository repo;
 
+    @Autowired
+    private WebClient webClient;
+
     public OrderService(OrderRepository repo) {
         this.repo = repo;
+    }
+
+
+    public ProductDTO getProduct(Long productId) {
+        return webClient.get()
+                .uri("http://localhost:8083/products/" + productId)
+                .retrieve()
+                .bodyToMono(ProductDTO.class)
+                .block(); // blocking for now
     }
 
     // CREATE
     public OrderResponseDTO create(OrderRequestDTO dto, Long userId) {
 
-        // 🔥 Later replace with Product Service call
-        Double price = 500.0;
+        ProductDTO product = getProduct(dto.getProductId());
+
+        Double price = product.getPrice();
 
         Order order = OrderMapper.toEntity(dto, userId, price);
 
