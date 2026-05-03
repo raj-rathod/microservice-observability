@@ -17,8 +17,6 @@ public class RateLimiterConfig {
                     .getHeaders()
                     .getFirst("X-User-Id");
 
-            System.out.println("Rate limit key: " + userId);
-
             return Mono.just(userId != null ? userId : "anonymous");
         };
     }

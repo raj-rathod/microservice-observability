@@ -60,6 +60,10 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             ServerWebExchange mutatedExchange = exchange.mutate()
                     .request(mutatedRequest)
                     .build();
+            System.out.println("🔥 Incoming Headers:");
+            mutatedRequest.getHeaders().forEach((key, value) -> {
+                System.out.println(key + " = " + value);
+            });
 
             return chain.filter(mutatedExchange);
 
@@ -78,6 +82,6 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     // ✅ Ensure this runs BEFORE RateLimiter
     @Override
     public int getOrder() {
-        return -1;
+        return -2;
     }
 }
