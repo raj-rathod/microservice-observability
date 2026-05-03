@@ -3,11 +3,15 @@ package com.rajesh.microservices.order.controller;
 import com.rajesh.microservices.order.dto.OrderRequestDTO;
 import com.rajesh.microservices.order.dto.OrderResponseDTO;
 import com.rajesh.microservices.order.service.OrderService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
+
+@Slf4j
 @RestController
 @RequestMapping("/orders")
 public class OrderController {
@@ -23,6 +27,7 @@ public class OrderController {
     public OrderResponseDTO create(
             @RequestBody OrderRequestDTO dto) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        log.info("Create Order: {}", dto.getProductId());
         return service.create(dto, Long.valueOf(userId));
     }
 
@@ -55,7 +60,9 @@ public class OrderController {
     }
 
     @GetMapping("/my")
-    public List<OrderResponseDTO> getMyOrders() {
+    public List<OrderResponseDTO> getMyOrders(@RequestHeader Map<String, String> headers) {
+        log.info("Entering Order Controller - getMyOrders");
+        headers.forEach((k, v) -> System.out.println(k + " = " + v));
         return service.getMyOrders();
     }
 }
